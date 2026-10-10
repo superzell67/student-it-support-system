@@ -1,2 +1,4 @@
 config/db.php
 uploads/*
+/vendor/
+/test_mail.php
