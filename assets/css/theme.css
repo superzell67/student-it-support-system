@@ -3422,3 +3422,15 @@ a {
     font-size: 16px;
     line-height: 1.5;
 }
+.show-password-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    cursor: pointer;
+}
+
+.show-password-label input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
