@@ -248,8 +248,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         <button type="submit" class="btn btn-block">Resend Verification Code</button>
                     </form>
 
+                    <div class="auth-switch">
+                        <a href="login.php" class="page-link">Back to Login</a>
+                    </div>
+
                     <p class="auth-switch">
-                        Wrong email?
                         <a href="register.php" class="page-link">Register again</a>
                     </p>
 
