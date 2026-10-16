@@ -6,58 +6,74 @@ require_once __DIR__ . '/config/db.php';
 
 $message = "";
 $email = "";
+$message_type = "";
 
 if (isset($_SESSION["login_message"])) {
     $message = $_SESSION["login_message"];
-    unset($_SESSION["login_message"]);
+    $message_type = $_SESSION["login_message_type"] ?? "error";
+
+    unset($_SESSION["login_message"], $_SESSION["login_message_type"]);
+}
+
+if (isset($_GET["registered"]) && $_GET["registered"] === "1") {
+    $message = "Registration successful! You can now log in.";
+    $message_type = "success";
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $email = trim($_POST["email"]);
-    $password = $_POST["password"];
+    $email = trim($_POST["email"] ?? "");
+    $password = $_POST["password"] ?? "";
 
-    if (empty($email) || empty($password)) {
+    if ($email === "" || $password === "") {
         $_SESSION["login_message"] = "Please enter your email and password.";
+        $_SESSION["login_message_type"] = "error";
         $_SESSION["login_email"] = $email;
+
         header("Location: login.php");
         exit;
     }
 
-    $stmt = $conn->prepare("SELECT id, full_name, email, password, role FROM users WHERE email = ? LIMIT 1");
+    $stmt = $conn->prepare("SELECT id, full_name, email, password, role, email_verified FROM users WHERE email = ? LIMIT 1");
     $stmt->bind_param("s", $email);
     $stmt->execute();
+
     $result = $stmt->get_result();
+    $user = $result->fetch_assoc();
 
-    if ($result->num_rows === 1) {
-        $user = $result->fetch_assoc();
+    $stmt->close();
 
-        if (password_verify($password, $user["password"])) {
-            $_SESSION["user_id"] = $user["id"];
-            $_SESSION["full_name"] = $user["full_name"];
-            $_SESSION["email"] = $user["email"];
-            $_SESSION["role"] = $user["role"];
+    if ($user && password_verify($password, $user["password"])) {
+        if ((int) $user["email_verified"] !== 1) {
+            $_SESSION["pending_verification_user_id"] = (int) $user["id"];
+            $_SESSION["login_message"] = "Verify your account first to login. Enter your verification code or request a new one.";
+            $_SESSION["login_message_type"] = "error";
 
-            if ($user["role"] === "staff") {
-                header("Location: staff/dashboard.php");
-                exit;
-            } else {
-                header("Location: student/dashboard.php");
-                exit;
-            }
-        } else {
-            $_SESSION["login_message"] = "Invalid Email or Password.";
-            $_SESSION["login_email"] = $email;
-            header("Location: login.php");
+            header("Location: verify_email.php");
             exit;
         }
-    } else {
-        $_SESSION["login_message"] = "Invalid Email or Password.";
-        $_SESSION["login_email"] = $email;
-        header("Location: login.php");
+
+        session_regenerate_id(true);
+
+        $_SESSION["user_id"] = (int) $user["id"];
+        $_SESSION["full_name"] = $user["full_name"];
+        $_SESSION["email"] = $user["email"];
+        $_SESSION["role"] = $user["role"];
+
+        if ($user["role"] === "staff") {
+            header("Location: staff/dashboard.php");
+            exit;
+        }
+
+        header("Location: student/dashboard.php");
         exit;
     }
 
-    $stmt->close();
+    $_SESSION["login_message"] = "Invalid Email or Password.";
+    $_SESSION["login_message_type"] = "error";
+    $_SESSION["login_email"] = $email;
+
+    header("Location: login.php");
+    exit;
 }
 
 if (isset($_SESSION["login_email"])) {
@@ -66,15 +82,16 @@ if (isset($_SESSION["login_email"])) {
 }
 
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="assets/css/theme.css">
     <title>Login - IT Support System</title>
 </head>
+
 <body class="auth-body">
 
     <div class="auth-shell">
@@ -100,21 +117,25 @@ if (isset($_SESSION["login_email"])) {
         </div>
 
         <div class="auth-formside">
+
             <div class="auth-topbar">
                 <a href="index.php" class="page-link">Home</a>
             </div>
 
             <main class="auth-main">
+
                 <section class="auth-card">
+
                     <p class="dashboard-label">IT SUPPORT PORTAL</p>
                     <h2>Welcome back</h2>
                     <p class="auth-subtext">Sign in to access the IT Support System.</p>
 
-                    <?php if (!empty($message)): ?>
-                        <div class="auth-error"><?php echo htmlspecialchars($message); ?></div>
+                    <?php if ($message !== ""): ?>
+                        <div class="<?php echo $message_type === "success" ? "auth-success" : "auth-error"; ?>"><?php echo htmlspecialchars($message); ?></div>
                     <?php endif; ?>
 
                     <form method="POST" action="login.php" class="auth-form">
+
                         <div class="form-group">
                             <label for="email">Email Address</label>
                             <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($email); ?>" placeholder="Enter your email" autocomplete="email" required>
@@ -133,15 +154,23 @@ if (isset($_SESSION["login_email"])) {
                         <button type="submit" class="btn btn-primary btn-block">Login</button>
 
                         <a href="forgot_pass.php" class="forgot-password">Forgot Password?</a>
+
                     </form>
 
-                    <p class="auth-switch">Don't have an account? <a href="register.php" class="page-link">Create an account</a></p>
+                    <p class="auth-switch">
+                        Don't have an account?
+                        <a href="register.php" class="page-link">Create an account</a>
+                    </p>
+
                 </section>
+
             </main>
+
         </div>
 
     </div>
 
     <script src="assets/js/auth.js"></script>
 </body>
+
 </html>

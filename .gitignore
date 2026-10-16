@@ -1,4 +1,8 @@
 config/db.php
+config/db_online.php
 uploads/*
 /vendor/
 /test_mail.php
+/check_password.php
+/check_time.php
+/check_mail_env.php
